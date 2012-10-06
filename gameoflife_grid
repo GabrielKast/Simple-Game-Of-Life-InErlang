@@ -1,0 +1,96 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -smp enable -sname factorial -mnesia debug verbose
+main(["test"]) -> test();
+main([Grid_nb]) -> display_next(10, grid(Grid_nb)).
+
+
+next_grid(Grid)->
+    [ [next_cell(I, J, Grid) || I <- lists:seq(1, length(lists:nth(J, Grid)))]
+      || J <- lists:seq(1, length(Grid))].
+
+
+next_cell(X, Y, Grid)->
+    Neighbours_nb = compute_neighbours(X, Y, Grid),
+    Actual_state = get(X, Y, Grid),
+    next_cell(Neighbours_nb, Actual_state).
+
+next_cell(2, 0) -> 0;
+next_cell(2, _) -> 1;
+next_cell(3, _) -> 1;
+next_cell(_, _) -> 0.
+    
+
+compute_neighbours(X, Y, Grid)-> 
+    lists:sum([get(I, J, Grid) || 
+		  I <- lists:seq(X-1, X+1),
+		  J <- lists:seq(Y-1, Y+1),
+		  (I =/= X orelse J =/=Y),
+		  (I >0 andalso J>0),
+		  (J =< length(Grid) andalso I =< length(lists:nth(J, Grid)))]).
+
+get(X, Y, Grid)-> lists:nth(X, lists:nth(Y, Grid)).
+    
+test()->
+    get_test(),
+    compute_neighbours_test(),
+    next_cell_test(),
+    next_grid_test(),
+    display_next(10, simple_grid()),
+    io:fwrite ("ok!\n").
+    
+get_test()->
+    0 = get(1, 1, simple_grid()),
+    1 = get(2, 1, simple_grid()).
+
+compute_neighbours_test()->
+    2 = compute_neighbours(2, 2, simple_grid()),
+    3 = compute_neighbours(1, 2, simple_grid()),
+    3 = compute_neighbours(1, 2, simple_grid()),
+    3 = compute_neighbours(3, 2, simple_grid()),
+    2 = compute_neighbours(1, 1, simple_grid()).
+    
+next_cell_test()->
+    1 = next_cell(2, 2, simple_grid()),
+    0 = next_cell(2, 1, simple_grid()),
+    1 = next_cell(1, 2, simple_grid()),
+    0 = next_cell(1, 1, simple_grid()).
+
+next_grid_test()->
+    Grid = [[0, 1, 0],
+	    [0, 1, 0],
+	    [0, 1, 0]],
+    Expected = [[0, 0, 0],
+		[1, 1, 1],
+		[0, 0, 0]],
+    Expected = next_grid(Grid).
+
+
+simple_grid() ->
+    [[0, 1, 0],
+     [0, 1, 0],
+     [0, 1, 0]].
+
+grid("2")->
+    [[1, 0, 1, 1], 
+     [0, 0, 1, 0], 
+     [1, 0, 0, 1], 
+     [0, 1, 1, 0], 
+     [1, 0, 1, 0], 
+     [0, 1, 1, 0], 
+     [0, 1, 1, 0]];
+grid(_) -> simple_grid().
+
+
+
+display_next(0, _) ->ok;
+display_next(N, Grid)->
+    display(Grid),
+    io:fwrite ("~n"),
+    Next_grid = next_grid(Grid),
+    display_next( N-1, Next_grid).
+    
+display(Grid)->
+    [ io:fwrite ("~p~n", 
+		[[get(I, J, Grid) || I <- lists:seq(1, length(lists:nth(J, Grid)))]])
+      || J <- lists:seq(1, length(Grid))].

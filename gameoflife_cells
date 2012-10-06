@@ -1,0 +1,112 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -smp enable -sname factorial -mnesia debug verbose
+main(["test"]) ->
+    test();
+main(_) ->
+    display_nth_time(sample_grid(), 3, 3, 10).
+
+get_cell(X, Y, Grid)->
+    lists:any(fun({I, J})-> I == X andalso J == Y end, Grid).
+
+get_neighbours(X, Y, Grid)->
+    lists:filter(
+      fun({I, J})-> 
+	      abs(X - I) < 2 andalso abs(Y - J) < 2 
+		  andalso not (X=:=I andalso Y=:=J) 
+      end,
+      Grid).
+
+get_neighbours_nb(X, Y, Grid)->
+    Neighbours = get_neighbours(X, Y, Grid), 
+    length(Neighbours).
+
+next_state(2, false) -> false;
+next_state(2, _) -> true;
+next_state(3, _) -> true;
+next_state(_, _) -> false.
+    
+next_state(X, Y, Grid)->
+    next_state(get_neighbours_nb(X, Y, Grid), get_cell(X, Y, Grid)).
+
+next_grid(Grid, Size_X, Size_Y)->
+    [{I, J} || J <- lists:seq(1, Size_Y),
+	       I <- lists:seq(1, Size_X),
+	       Next = next_state(I, J, Grid),
+	       Next =:=true].
+
+test()-> 
+    test_state(),
+    test_neighbours(),
+    test_neighbours_2(),
+    test_neighbours_3(),
+    test_neighbours_nb(),
+    test_next_state(),
+    test_next_grid(),
+    ok(),
+    io:fwrite ("ok!\n").
+
+ok()->ok.
+
+
+test_state()->
+    Grid = sample_grid(),
+    Result = get_cell(2, 2, Grid),
+    Expected = true,
+    {Expected, Expected} = {Expected, Result}.
+
+test_neighbours()->
+    Grid = sample_grid(),
+    Result = get_neighbours(2, 2, Grid),
+    Expected = sample_grid() -- [{2, 2}],
+    Expected = Result.
+
+test_neighbours_2()->
+    Grid = sample_grid(),
+    Result = get_neighbours(2, 1, Grid),
+    Expected = sample_grid() ,
+    Expected = Result.
+
+test_neighbours_3()->
+    Grid = sample_grid(),
+    Result = get_neighbours(1, 1, Grid),
+    Expected = [{1, 2}, {2, 2}],
+    Expected = Result.
+
+test_neighbours_nb()->
+    Grid = sample_grid(),
+    2 = get_neighbours_nb(1, 1, Grid).
+
+test_next_state()->
+    Grid = sample_grid(),
+    true = next_state(2, 2, Grid),
+    false = next_state(1, 1, Grid),
+    false = next_state(1, 2, Grid),
+    true = next_state(2, 1, Grid).
+
+test_next_grid()->
+    Grid = sample_grid(),
+    [{2, 1}, {2, 2}, {2, 3}] = next_grid(Grid, 3, 3).
+	
+sample_grid()-> [{1, 2},
+		 {2, 2},
+		 {3, 2}].
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+display_nth_time(_, _, _, 0)-> ok;
+display_nth_time(Grid, Size_x, Size_y, N) ->    
+    display(Grid, Size_x, Size_y),
+    display_nth_time(next_grid(Grid, Size_x, Size_y), Size_x, Size_y, N-1).
+
+display(Grid, Size_x, Size_y)->
+    [display_line(Grid, Size_x, J) || J <- lists:seq(1, Size_y)],
+    io:fwrite ("~n").
+
+cell(true) -> "*";
+cell(_) -> " ".
+
+display_line(Grid, Size_x, Y)->
+    Line = string:join([cell(get_cell(X, Y, Grid)) 
+			|| X <- lists:seq(1, Size_x)], " "),
+    io:fwrite ("~s~n", [Line]).
